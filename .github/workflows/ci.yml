@@ -45,7 +45,7 @@ jobs:
       # 只执行 failsafe 的 *IT 验收测试（co-bootstrap E2E）；用 -Dtest='!*Test' 显式排除
       # surefire 单测（阶段 2 已执行），避免 S3 占位模块的单元测试在此阶段再次阻断。
       - name: 集成测试
-        run: mvn -B -f backend/pom.xml verify -Dtest='!*Test' -DfailIfNoTests=false
+        run: mvn -B -f backend/pom.xml verify -Dtest='!*Test' -Dsurefire.failIfNoSpecifiedTests=false
 
       - name: 归档测试报告
         if: always()
