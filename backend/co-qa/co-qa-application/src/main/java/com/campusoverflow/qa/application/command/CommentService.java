@@ -37,7 +37,23 @@ public class CommentService {
 
     @Transactional
     public long post(Actor actor, PostCommentCommand cmd) {
-        // TODO(S2)：实现 CommentService.post——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S2)：CommentService.post 尚未实现");
+        Comment parent = null;
+        if (cmd.parentId() != null) {
+            parent = comments.findById(cmd.parentId())
+                    .orElseThrow(() -> new NotFoundException("QA-4003", "父评论不存在"));
+        }
+        long questionId;
+        if (cmd.targetType() == TargetType.QUESTION) {
+            questionId = cmd.targetId();
+        } else {
+            Answer a = answers.findById(cmd.targetId())
+                    .orElseThrow(() -> new NotFoundException("QA-4002", "回答不存在"));
+            questionId = a.questionId();
+        }
+        Comment saved = comments.save(Comment.post(cmd.targetType(), cmd.targetId(), questionId, actor.userId(),
+                parent, cmd.body(), clock.instant()));
+        events.publish(new CommentPostedEvent(EventIds.next(), clock.instant(), saved.id(), questionId,
+                actor.userId(), saved.body()));
+        return saved.id();
     }
 }

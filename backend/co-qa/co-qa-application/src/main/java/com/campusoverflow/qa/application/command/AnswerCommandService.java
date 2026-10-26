@@ -46,42 +46,67 @@ public class AnswerCommandService {
 
     @Transactional
     public long submit(Actor actor, long questionId, String body) {
-        // TODO(S2)：实现 AnswerCommandService.submit——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S2)：AnswerCommandService.submit 尚未实现");
+        Question q = loadQuestion(questionId);
+        q.ensureOpenForAnswers();
+        Answer saved = answers.save(Answer.submit(q, actor.userId(), MarkdownBody.ofAnswer(body), clock.instant()));
+        questions.adjustAnswerCount(questionId, 1);
+        listCache.invalidateAll();
+        events.publish(new AnswerSubmittedEvent(EventIds.next(), clock.instant(), saved.id(), q.id(),
+                actor.userId(), q.authorId(), q.title().value()));
+        return saved.id();
     }
 
     @Transactional
     public void edit(Actor actor, long answerId, String body) {
-        // TODO(S2)：实现 AnswerCommandService.edit——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S2)：AnswerCommandService.edit 尚未实现");
+        Answer a = loadAnswer(answerId);
+        Question q = loadQuestion(a.questionId());
+        boolean manages = identity.canManageCourse(actor.userId(), q.courseId());
+        a.edit(actor, manages, MarkdownBody.ofAnswer(body), clock.instant());
+        answers.save(a);
     }
 
     @Transactional
     public void delete(Actor actor, long answerId) {
-        // TODO(S2)：实现 AnswerCommandService.delete——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S2)：AnswerCommandService.delete 尚未实现");
+        Answer a = loadAnswer(answerId);
+        Question q = loadQuestion(a.questionId());
+        boolean manages = identity.canManageCourse(actor.userId(), q.courseId());
+        boolean accepted = q.isAccepted(answerId);
+        a.softDelete(actor, manages, accepted, clock.instant());
+        answers.save(a);
+        listCache.invalidateAll();
+        events.publish(new ContentDeletedEvent(EventIds.next(), clock.instant(), "ANSWER", a.id(), q.id()));
     }
 
     /** 场景 R-2：采纳最佳答案。状态变更与 Outbox 事件在同一事务提交；声誉结算异步进行。 */
     @Transactional
     public void accept(Actor actor, long questionId, long answerId) {
-        // TODO(S2)：实现 AnswerCommandService.accept——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S2)：AnswerCommandService.accept 尚未实现");
+        Question q = loadQuestion(questionId);
+        boolean manages = identity.canManageCourse(actor.userId(), q.courseId());
+        Answer a = loadAnswer(answerId);
+        q.accept(a, actor, manages);
+        questions.save(q);
+        audit.record("ANSWER_ACCEPTED", actor.userId(), "ANSWER", String.valueOf(answerId),
+                "accept answer " + answerId + " for question " + questionId);
+        events.publish(new AnswerAcceptedEvent(EventIds.next(), clock.instant(), answerId, q.id(),
+                a.authorId(), q.authorId(), actor.userId(), q.title().value()));
     }
 
     @Transactional
     public void endorse(Actor actor, long answerId) {
-        // TODO(S2)：实现 AnswerCommandService.endorse——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S2)：AnswerCommandService.endorse 尚未实现");
+        Answer a = loadAnswer(answerId);
+        Question q = loadQuestion(a.questionId());
+        boolean manages = identity.canManageCourse(actor.userId(), q.courseId());
+        a.endorse(actor, manages);
+        answers.save(a);
+        events.publish(new AnswerEndorsedEvent(EventIds.next(), clock.instant(), a.id(), q.id(),
+                a.authorId(), actor.userId(), q.title().value()));
     }
 
     private Question loadQuestion(long id) {
-        // TODO(S2)：实现 AnswerCommandService.loadQuestion——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S2)：AnswerCommandService.loadQuestion 尚未实现");
+        return questions.findById(id).orElseThrow(() -> new NotFoundException("QA-4001", "问题不存在"));
     }
 
     private Answer loadAnswer(long id) {
-        // TODO(S2)：实现 AnswerCommandService.loadAnswer——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S2)：AnswerCommandService.loadAnswer 尚未实现");
+        return answers.findById(id).orElseThrow(() -> new NotFoundException("QA-4002", "回答不存在"));
     }
 }
