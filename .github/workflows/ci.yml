@@ -42,8 +42,10 @@ jobs:
         run: mvn -B -f backend/pom.xml verify -DskipITs -Djacoco.skip=false -pl co-shared-kernel,co-identity,co-qa -am
 
       # 阶段 5：集成测试（Testcontainers 拉起真实 MySQL + Redis）
+      # 只执行 failsafe 的 *IT 验收测试（co-bootstrap E2E）；用 -Dtest='!*Test' 显式排除
+      # surefire 单测（阶段 2 已执行），避免 S3 占位模块的单元测试在此阶段再次阻断。
       - name: 集成测试
-        run: mvn -B -f backend/pom.xml verify -Dsurefire.skip=true
+        run: mvn -B -f backend/pom.xml verify -Dtest='!*Test' -DfailIfNoTests=false
 
       - name: 归档测试报告
         if: always()
