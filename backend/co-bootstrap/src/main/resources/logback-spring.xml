@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CampusOverflow Logback 配置（何 · Sprint2 Lab4）。
+  - dev：彩色控制台，便于本地调试；
+  - prod：JSON 结构化日志（LogstashEncoder），便于采集到 ELK / Loki 等日志系统。
+  继承 Spring Boot defaults.xml，避免重复定义 CONSOLE 等 appender 的基础行为。
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- 应用名，写入每条日志（MDC / JSON 字段） -->
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="campus-overflow"/>
+
+    <!-- ============ dev / 默认：彩色控制台 ============ -->
+    <springProfile name="!prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${CONSOLE_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- ============ prod：JSON 结构化日志 ============ -->
+    <springProfile name="prod">
+        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- 自定义字段：应用名 -->
+                <customFields>{"app":"${APP_NAME}"}</customFields>
+                <!-- 包含 MDC（如 traceId、userId 等） -->
+                <includeMdc>true</includeMdc>
+                <!-- 输出调用栈 -->
+                <includeStacktrace>true</includeStacktrace>
+                <!-- 时间戳格式 -->
+                <fieldNames>
+                    <timestamp>@timestamp</timestamp>
+                    <message>message</message>
+                    <thread>thread</thread>
+                    <logger>logger</logger>
+                    <level>level</level>
+                </fieldNames>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>
