@@ -1,0 +1,169 @@
+{
+  "info": {
+    "name": "CampusOverflow API",
+    "description": "CampusOverflow 后端接口集合（Lab4 何负责编写）。\n\n## 使用前准备\n1. 启动后端（默认 http://localhost:8080）和 MySQL/Redis（docker-compose up -d）。\n2. 先跑「01-获取CSRF Token」→「02-登录」，再跑「03-发布问题」。\n3. 会话 Cookie 和 XSRF-TOKEN 由 Postman 自动管理。\n\n## 主要用例\n- POST /api/v1/questions 发布问题（Lab4 端到端验收接口）\n- GET  /api/v1/questions 问题列表\n- GET  /api/v1/questions/{id} 问题详情",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "username", "value": "he001" },
+    { "key": "password", "value": "Test1234!" }
+  ],
+  "item": [
+    {
+      "name": "01-获取CSRF Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('CSRF 返回 token', function () {",
+              "    pm.response.to.have.jsonBody('token');",
+              "    pm.collectionVariables.set('xsrfToken', pm.response.json().token);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/auth/csrf", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","csrf"] }
+      }
+    },
+    {
+      "name": "02-登录",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('登录成功 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('返回当前用户', function () { pm.expect(pm.response.json().username).to.exist; });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+        "description": "用「变量」里配置的账号密码登录。首次使用可先跑下面的「注册」用例建号。"
+      }
+    },
+    {
+      "name": "02b-注册（首次使用）",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"displayName\": \"何同学\",\n  \"email\": \"he@campus.edu\",\n  \"password\": \"{{password}}\",\n  \"college\": \"计算机学院\",\n  \"className\": \"软工2401\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] },
+        "description": "首次使用时跑这个建号。字段要求：username 4-20位，password 至少8位。"
+      }
+    },
+    {
+      "name": "03-发布问题 POST /api/v1/questions",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('发布成功返回 201', function () { pm.response.to.have.status(201); });",
+              "pm.test('返回新问题 id', function () {",
+              "    pm.expect(pm.response.json().id).to.be.a('number');",
+              "    pm.collectionVariables.set('questionId', pm.response.json().id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"courseId\": 1,\n  \"title\": \"Lab4 端到端验证：Spring Boot 如何配置 JSON 日志？\",\n  \"body\": \"请问在 Spring Boot 3 中用 Logback + logstash-logback-encoder 输出 JSON 日志时，prod profile 下需要注意哪些配置？\",\n  \"tags\": [\"java\", \"spring-boot\", \"logging\"]\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/questions", "host": ["{{baseUrl}}"], "path": ["api","v1","questions"] },
+        "description": "Lab4 端到端验收接口：POST /api/v1/questions。成功返回 201 和 {id: 新问题ID}。需要先登录并带 X-XSRF-TOKEN 头。"
+      }
+    },
+    {
+      "name": "04-问题列表 GET /api/v1/questions",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('列表返回 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('返回分页结构', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.content).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/questions?page=1&size=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","v1","questions"],
+          "query": [
+            { "key": "courseId", "value": "1", "disabled": true },
+            { "key": "page", "value": "1" },
+            { "key": "size", "value": "10" }
+          ]
+        },
+        "description": "公开接口，无需登录。返回分页列表。"
+      }
+    },
+    {
+      "name": "05-问题详情 GET /api/v1/questions/{id}",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('详情返回 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('返回标题', function () { pm.expect(pm.response.json().title).to.exist; });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/questions/{{questionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","v1","questions","{{questionId}}"]
+        },
+        "description": "公开接口。questionId 由上一个发布用例自动写入变量。"
+      }
+    }
+  ]
+}
