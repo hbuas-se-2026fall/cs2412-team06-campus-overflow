@@ -42,10 +42,12 @@ jobs:
         run: mvn -B -f backend/pom.xml verify -DskipITs -Djacoco.skip=false -pl co-shared-kernel,co-identity,co-qa -am
 
       # 阶段 5：集成测试（Testcontainers 拉起真实 MySQL + Redis）
-      # 只执行 failsafe 的 *IT 验收测试（co-bootstrap E2E）；用 -Dtest='!*Test' 显式排除
-      # surefire 单测（阶段 2 已执行），避免 S3 占位模块的单元测试在此阶段再次阻断。
+      # 直接调用 failsafe goal 执行 *IT 验收测试（co-bootstrap E2E），surefire 不参与。
+      # 不能用 -DskipTests / -Dmaven.test.skip=true（会连带跳过 failsafe 的集成测试），
+      # 也不能用 -Dtest=!*Test 排除（该写法会让 surefire 把 *IT 类纳入单测误跑——E2E 需 Docker，
+      # 在单测阶段执行必然失败）。集成测试统一由 failsafe 执行 CampusOverflowFlowIT。
       - name: 集成测试
-        run: mvn -B -f backend/pom.xml verify -Dtest='!*Test' -Dsurefire.failIfNoSpecifiedTests=false
+        run: mvn -B -f backend/pom.xml test-compile failsafe:integration-test failsafe:verify
 
       - name: 归档测试报告
         if: always()
