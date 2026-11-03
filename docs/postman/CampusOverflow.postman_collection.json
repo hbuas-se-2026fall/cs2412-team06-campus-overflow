@@ -5,7 +5,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "baseUrl", "value": "http://10.171.130.29:8080" },
     { "key": "username", "value": "he001" },
     { "key": "password", "value": "Test1234!" }
   ],
@@ -20,7 +20,7 @@
             "exec": [
               "pm.test('CSRF 返回 token', function () {",
               "    pm.response.to.have.jsonBody('token');",
-              "    pm.collectionVariables.set('xsrfToken', pm.response.json().token);",
+              "    pm.collectionVariables.set('xsrfToken', pm.cookies.get('XSRF-TOKEN'));",
               "});"
             ]
           }
@@ -118,7 +118,7 @@
               "pm.test('列表返回 200', function () { pm.response.to.have.status(200); });",
               "pm.test('返回分页结构', function () {",
               "    var json = pm.response.json();",
-              "    pm.expect(json.content).to.be.an('array');",
+              "    pm.expect(json.items).to.be.an('array');",
               "});"
             ]
           }
