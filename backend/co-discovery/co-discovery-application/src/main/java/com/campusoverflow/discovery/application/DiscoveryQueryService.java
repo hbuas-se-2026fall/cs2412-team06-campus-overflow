@@ -29,12 +29,30 @@ public class DiscoveryQueryService {
     }
 
     public PageResult<SearchResultView> search(SearchQuery query) {
-        // TODO(S3)：实现 DiscoveryQueryService.search——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：DiscoveryQueryService.search 尚未实现");
+        PageResult<SearchHit> hits = search.search(query);
+        Map<Long, UserSummary> users = identity.findUsers(hits.items().stream().map(SearchHit::authorId).toList());
+        return hits.map(h -> toView(h, users.get(h.authorId())));
     }
 
     public List<RelatedQuestionView> related(long questionId, int limit) {
-        // TODO(S3)：实现 DiscoveryQueryService.related——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：DiscoveryQueryService.related 尚未实现");
+        List<String> tags = index.findTags(questionId);
+        if (tags.isEmpty()) {
+            return List.of();
+        }
+        List<SearchIndex.RelatedCandidate> candidates =
+                index.findCandidatesSharingTags(questionId, tags, limit * 5);
+        return RelatedQuestionPolicy.rank(candidates, tags.size(), limit).stream()
+                .map(c -> new RelatedQuestionView(c.questionId(), c.title(), c.answerCount(), c.accepted(),
+                        RelatedQuestionPolicy.jaccard(c.sharedTags(), c.tagCount(), tags.size())))
+                .toList();
+    }
+
+    private static SearchResultView toView(SearchHit h, UserSummary author) {
+        String displayName = author == null ? "用户" + h.authorId() : author.displayName();
+        String role = author == null ? "" : author.role().name();
+        boolean verified = author != null && author.verified();
+        return new SearchResultView(h.questionId(), h.title(), h.snippet(), h.tags(), h.courseId(),
+                new SearchResultView.Author(h.authorId(), displayName, role, verified),
+                h.score(), h.answerCount(), h.accepted(), h.bountyOpen(), h.createdAt());
     }
 }
