@@ -6,6 +6,7 @@ import com.campusoverflow.reputation.api.event.ReputationChangedEvent;
 import com.campusoverflow.reputation.domain.ReputationAccountRepository;
 import com.campusoverflow.shared.event.ProcessedEventStore;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,13 +36,31 @@ public class LeaderboardService {
     @EventListener
     @Transactional
     public void on(ReputationChangedEvent e) {
-        // TODO(S3)：实现 LeaderboardService.on——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：LeaderboardService.on 尚未实现");
+        store.increment(e.userId(), e.delta(), e.occurredAt());
     }
 
     @Transactional(readOnly = true)
     public List<LeaderboardEntryView> top(LeaderboardPeriod period, int limit) {
-        // TODO(S3)：实现 LeaderboardService.top——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：LeaderboardService.top 尚未实现");
+        Instant now = clock.instant();
+        List<LeaderboardStore.Entry> entries;
+        if (period == LeaderboardPeriod.ALL) {
+            entries = accounts.topByReputation(limit).stream()
+                    .map(a -> new LeaderboardStore.Entry(a.userId(), a.reputation()))
+                    .toList();
+        } else {
+            entries = store.top(period, now, limit);
+        }
+        List<Long> userIds = entries.stream().map(LeaderboardStore.Entry::userId).toList();
+        Map<Long, UserSummary> users = identity.findUsers(userIds);
+        List<LeaderboardEntryView> result = new ArrayList<>();
+        int rank = 1;
+        for (LeaderboardStore.Entry e : entries) {
+            UserSummary u = users.get(e.userId());
+            result.add(new LeaderboardEntryView(rank++, e.userId(),
+                    u != null ? u.displayName() : "?",
+                    u != null && u.verified(),
+                    e.score()));
+        }
+        return result;
     }
 }

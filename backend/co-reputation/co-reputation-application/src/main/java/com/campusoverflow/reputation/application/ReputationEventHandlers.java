@@ -47,36 +47,41 @@ public class ReputationEventHandlers {
     @EventListener
     @Transactional
     public void on(UserRegisteredEvent e) {
-        // TODO(S3)：实现 ReputationEventHandlers.on——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：ReputationEventHandlers.on 尚未实现");
+        int initialPoints = ReputationRulebook.initialPoints(e.role());
+        ReputationAccount account = ReputationAccount.open(e.userId(), initialPoints);
+        accounts.save(account);
     }
 
     /** 场景 R-2 的异步后半段：采纳 → 回答者 +15 → 徽章 → 悬赏结算。 */
     @EventListener
     @Transactional
     public void on(AnswerAcceptedEvent e) {
-        // TODO(S3)：实现 ReputationEventHandlers.on——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：ReputationEventHandlers.on 尚未实现");
+        int delta = ReputationRulebook.acceptedDelta(e.questionAuthorId(), e.answerAuthorId());
+        ledgerService.record(e.answerAuthorId(), e.eventId(), ReputationReason.ANSWER_ACCEPTED, delta,
+                "answer", e.answerId());
+        badges.grant(e.answerAuthorId(), BadgeType.FIRST_ACCEPTED);
+        bounties.settleOnAccept(e.questionId(), e.answerId(), e.answerAuthorId(), e.eventId());
     }
 
     @EventListener
     @Transactional
     public void on(VoteCastEvent e) {
-        // TODO(S3)：实现 ReputationEventHandlers.on——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：ReputationEventHandlers.on 尚未实现");
+        int delta = ReputationRulebook.voteDelta(e.oldValue(), e.newValue());
+        ReputationReason reason = "QUESTION".equals(e.targetType())
+                ? ReputationReason.QUESTION_VOTE : ReputationReason.ANSWER_VOTE;
+        ledgerService.record(e.targetAuthorId(), e.eventId(), reason, delta,
+                e.targetType().toLowerCase(), e.targetId());
     }
 
     @EventListener
     @Transactional
     public void on(AnswerSubmittedEvent e) {
-        // TODO(S3)：实现 ReputationEventHandlers.on——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：ReputationEventHandlers.on 尚未实现");
+        badges.grant(e.answerAuthorId(), BadgeType.FIRST_ANSWER);
     }
 
     @EventListener
     @Transactional
     public void on(AnswerEndorsedEvent e) {
-        // TODO(S3)：实现 ReputationEventHandlers.on——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：ReputationEventHandlers.on 尚未实现");
+        badges.grant(e.answerAuthorId(), BadgeType.TEACHER_ENDORSED);
     }
 }
