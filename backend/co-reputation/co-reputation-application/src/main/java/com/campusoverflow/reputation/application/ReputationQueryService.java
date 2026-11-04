@@ -32,13 +32,28 @@ public class ReputationQueryService {
     }
 
     public ReputationProfileView profile(long userId, Actor viewerOrNull) {
-        // TODO(S3)：实现 ReputationQueryService.profile——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：ReputationQueryService.profile 尚未实现");
+        ReputationAccount account = accounts.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("ACCOUNT_NOT_FOUND", "用户 " + userId + " 没有声誉账户"));
+        UserSummary user = identity.findUser(userId)
+                .orElseThrow(() -> new NotFoundException("USER_NOT_FOUND", "用户 " + userId + " 不存在"));
+        var userBadges = badges.findByUser(userId).stream()
+                .map(b -> new ReputationProfileView.BadgeView(b.type().name(), b.type().displayName(),
+                        b.type().description(), b.awardedAt()))
+                .toList();
+        boolean isSelfOrAdmin = viewerOrNull != null
+                && (viewerOrNull.userId() == userId || viewerOrNull.isAdmin());
+        Integer avail = isSelfOrAdmin ? account.availablePoints() : null;
+        Integer frozen = isSelfOrAdmin ? account.frozenPoints() : null;
+        return new ReputationProfileView(userId, user.displayName(), account.reputation(), avail, frozen, userBadges);
     }
 
     /** 声誉流水属于个人数据：仅本人与管理员可查看。 */
     public PageResult<LedgerEntryView> ledger(long userId, Actor viewer, PageRequest page) {
-        // TODO(S3)：实现 ReputationQueryService.ledger——参考领域单元测试与 arc42 文档中的业务规则
-        throw new UnsupportedOperationException("TODO(S3)：ReputationQueryService.ledger 尚未实现");
+        if (viewer.userId() != userId && !viewer.isAdmin()) {
+            throw new ForbiddenException("FORBIDDEN", "只能查看自己的声誉流水");
+        }
+        return ledger.findByUser(userId, page)
+                .map(e -> new LedgerEntryView(e.id(), e.reason().name(), e.reason().label(), e.delta(),
+                        e.refType(), e.refId(), e.createdAt()));
     }
 }
