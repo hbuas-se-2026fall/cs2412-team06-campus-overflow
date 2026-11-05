@@ -85,6 +85,7 @@ public class AnswerCommandService {
         Answer a = loadAnswer(answerId);
         q.accept(a, actor, manages);
         questions.save(q);
+        listCache.invalidateAll();
         audit.record("ANSWER_ACCEPTED", actor.userId(), "ANSWER", String.valueOf(answerId),
                 "accept answer " + answerId + " for question " + questionId);
         events.publish(new AnswerAcceptedEvent(EventIds.next(), clock.instant(), answerId, q.id(),
