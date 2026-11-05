@@ -90,6 +90,8 @@ class AnswerAndVoteServiceTest {
         assertThat(accepted.get(0).answerAuthorId()).isEqualTo(hong.userId());
         assertThat(accepted.get(0).acceptedById()).isEqualTo(ming.userId());
         assertThat(audit.actions).contains("ANSWER_ACCEPTED");
+        // 采纳会改变列表摘要的 accepted 标志，必须使列表缓存失效（回归：曾遗漏导致列表页延迟 60~75 秒显示）
+        assertThat(cache.invalidations).isEqualTo(2); // submit 1 次 + accept 1 次
     }
 
     @Test
