@@ -47,6 +47,9 @@ public class ReputationEventHandlers {
     @EventListener
     @Transactional
     public void on(UserRegisteredEvent e) {
+        if (accounts.findByUserId(e.userId()).isPresent()) {
+            return; // 幂等：OutboxRelay 至少一次投递，重复注册事件直接忽略
+        }
         int initialPoints = ReputationRulebook.initialPoints(e.role());
         ReputationAccount account = ReputationAccount.open(e.userId(), initialPoints);
         accounts.save(account);
