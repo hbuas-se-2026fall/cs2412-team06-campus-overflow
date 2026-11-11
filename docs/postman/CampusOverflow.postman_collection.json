@@ -164,6 +164,78 @@
         },
         "description": "公开接口。questionId 由上一个发布用例自动写入变量。"
       }
+    },
+    {
+      "name": "06-注册回答者 wang001",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"wang001\",\n  \"displayName\": \"王同学\",\n  \"email\": \"wang001@campus.edu\",\n  \"password\": \"Test1234!\",\n  \"college\": \"计算机学院\",\n  \"className\": \"计科2412\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] }
+      },
+      "description": "注册第二个用户作为回答者（提问者不能回答自己的问题）。"
+    },
+    {
+      "name": "07-wang001 回答问题",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"body\": \"用Spring的@Transactional把业务表和Outbox记录放在同一个事务里提交，再用OutboxRelay定时扫Outbox表投递。关键是幂等：消费者侧用processed_event(event_id)去重。\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/questions/{{questionId}}/answers", "host": ["{{baseUrl}}"], "path": ["api","v1","questions","{{questionId}}","answers"] }
+      },
+      "description": "需要先以 wang001 身份登录（在 Postman Cookies 里清掉 he001 的 session 再登录 wang001）。"
+    },
+    {
+      "name": "08-he001 投票 +1",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"targetType\": \"ANSWER\",\n  \"targetId\": {{answerId}},\n  \"value\": 1\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/votes", "host": ["{{baseUrl}}"], "path": ["api","v1","votes"] }
+      },
+      "description": "切回 he001 登录后跑。answerId 由上一个回答用例手动填。"
+    },
+    {
+      "name": "09-he001 采纳回答",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"answerId\": {{answerId}}\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/questions/{{questionId}}/accepted-answer", "host": ["{{baseUrl}}"], "path": ["api","v1","questions","{{questionId}}","accepted-answer"] }
+      }
+    },
+    {
+      "name": "10-查声誉（回答者）",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/users/8/reputation", "host": ["{{baseUrl}}"], "path": ["api","v1","users","8","reputation"] }
+      },
+      "description": "wang001 的 userId=8。公开接口，无需登录。采纳后声誉应从 0 涨到 ~25。"
     }
   ]
 }
