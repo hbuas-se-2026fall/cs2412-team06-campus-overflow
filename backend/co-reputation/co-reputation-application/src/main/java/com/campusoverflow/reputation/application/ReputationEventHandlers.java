@@ -55,15 +55,17 @@ public class ReputationEventHandlers {
         accounts.save(account);
     }
 
-    /** 场景 R-2 的异步后半段：采纳 → 回答者 +15 → 徽章 → 悬赏结算。 */
+    /** 场景 R-2 的异步后半段：采纳 → 回答者 +15 → 徽章 → 悬赏结算。自问自答 delta=0 时不授徽、不结算悬赏。 */
     @EventListener
     @Transactional
     public void on(AnswerAcceptedEvent e) {
         int delta = ReputationRulebook.acceptedDelta(e.questionAuthorId(), e.answerAuthorId());
         ledgerService.record(e.answerAuthorId(), e.eventId(), ReputationReason.ANSWER_ACCEPTED, delta,
                 "answer", e.answerId());
-        badges.grant(e.answerAuthorId(), BadgeType.FIRST_ACCEPTED);
-        bounties.settleOnAccept(e.questionId(), e.answerId(), e.answerAuthorId(), e.eventId());
+        if (delta > 0) {
+            badges.grant(e.answerAuthorId(), BadgeType.FIRST_ACCEPTED);
+            bounties.settleOnAccept(e.questionId(), e.answerId(), e.answerAuthorId(), e.eventId());
+        }
     }
 
     @EventListener
