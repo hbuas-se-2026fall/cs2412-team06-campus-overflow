@@ -21,6 +21,10 @@ jobs:
           distribution: temurin
           cache: maven
 
+      # 阶段 0：代码风格检查（Checkstyle；规则集 config/checkstyle/checkstyle.xml，error 级违规即红）
+      - name: 代码风格检查
+        run: mvn -B -f backend/pom.xml checkstyle:check
+
       # 阶段 1：编译（模块依赖不成环由 Maven 保证）
       - name: 编译
         run: mvn -B -f backend/pom.xml clean compile

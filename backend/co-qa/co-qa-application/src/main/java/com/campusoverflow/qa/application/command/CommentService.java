@@ -5,7 +5,6 @@ import com.campusoverflow.qa.domain.Answer;
 import com.campusoverflow.qa.domain.AnswerRepository;
 import com.campusoverflow.qa.domain.Comment;
 import com.campusoverflow.qa.domain.CommentRepository;
-import com.campusoverflow.qa.domain.Question;
 import com.campusoverflow.qa.domain.QuestionRepository;
 import com.campusoverflow.qa.domain.TargetType;
 import com.campusoverflow.shared.domain.NotFoundException;
