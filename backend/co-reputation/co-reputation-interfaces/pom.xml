@@ -33,5 +33,47 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-contract-verifier</artifactId>
+            <version>4.2.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-contract-maven-plugin</artifactId>
+                <version>4.2.3</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <baseClassForTests>com.campusoverflow.reputation.contract.LeaderboardContractBase</baseClassForTests>
+                    <contractsDirectory>${project.basedir}/src/test/resources/contracts</contractsDirectory>
+                </configuration>
+            </plugin>
+            <!-- 契约生成测试统一由 failsafe 在 integration-test 阶段执行（issue #40 验收：failsafe 阶段跑通）；
+                 surefire 排除同一包，避免单测阶段重复执行。仅配置本子模块，不改根 pom / ci.yml。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>com/campusoverflow/reputation/contract/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>com/campusoverflow/reputation/contract/**</include>
+                    </includes>
+                    <reportsDirectory>${project.build.directory}/contract-tests</reportsDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
