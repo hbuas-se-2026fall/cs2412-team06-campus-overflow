@@ -1,0 +1,43 @@
+request:
+  method: GET
+  urlPath: /api/v1/leaderboard
+  queryParameters:
+    period: week
+    limit: 20
+response:
+  status: 200
+  headers:
+    Content-Type: application/json
+  body:
+    - rank: 1
+      userId: 101
+      displayName: "小明"
+      verified: true
+      score: 250
+    - rank: 2
+      userId: 102
+      displayName: "小红"
+      verified: false
+      score: 180
+  matchers:
+    body:
+      - path: $[0].rank
+        type: by_type
+      - path: $[0].userId
+        type: by_type
+      - path: $[0].displayName
+        type: by_type
+      - path: $[0].verified
+        type: by_type
+      - path: $[0].score
+        type: by_type
+      - path: $[1].rank
+        type: by_type
+      - path: $[1].userId
+        type: by_type
+      - path: $[1].displayName
+        type: by_type
+      - path: $[1].verified
+        type: by_type
+      - path: $[1].score
+        type: by_type
