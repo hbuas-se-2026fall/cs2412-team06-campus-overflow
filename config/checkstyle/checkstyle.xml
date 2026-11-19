@@ -16,6 +16,12 @@
     <property name="charset" value="UTF-8"/>
     <property name="severity" value="error"/>
 
+    <!-- 行宽 ≤120（error；LineLength 属于 Checker 级模块，不能挂在 TreeWalker 下） -->
+    <module name="LineLength">
+        <property name="max" value="120"/>
+        <property name="tabWidth" value="4"/>
+    </module>
+
     <module name="TreeWalker">
 
         <!-- 未使用的 import（error） -->
@@ -30,12 +36,6 @@
         <!-- 常量全大写；豁免 slf4j 的 log 与序列化版本号 serialVersionUID -->
         <module name="ConstantName">
             <property name="format" value="^([A-Z][A-Z0-9_]*|log|serialVersionUID)$"/>
-        </module>
-
-        <!-- 行宽 ≤120（error） -->
-        <module name="LineLength">
-            <property name="max" value="120"/>
-            <property name="tabWidth" value="4"/>
         </module>
 
         <!--
