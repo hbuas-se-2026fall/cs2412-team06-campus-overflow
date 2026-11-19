@@ -3,7 +3,6 @@ package com.campusoverflow.reputation.application;
 import com.campusoverflow.identity.api.IdentityApi;
 import com.campusoverflow.identity.api.UserSummary;
 import com.campusoverflow.qa.api.QaQueryApi;
-import com.campusoverflow.qa.api.QuestionRef;
 import com.campusoverflow.reputation.api.event.BountyAwardedEvent;
 import com.campusoverflow.reputation.api.event.BountyClosedEvent;
 import com.campusoverflow.reputation.api.event.BountyOpenedEvent;
@@ -14,7 +13,6 @@ import com.campusoverflow.reputation.domain.ReputationAccountRepository;
 import com.campusoverflow.reputation.domain.ReputationReason;
 import com.campusoverflow.shared.audit.AuditTrail;
 import com.campusoverflow.shared.domain.BusinessRuleException;
-import com.campusoverflow.shared.domain.ConflictException;
 import com.campusoverflow.shared.domain.NotFoundException;
 import com.campusoverflow.shared.event.EventIds;
 import com.campusoverflow.shared.event.IntegrationEventPublisher;
@@ -92,7 +90,8 @@ public class BountyService {
         accounts.save(sponsor);
         bounties.save(bounty);
         ledgerService.record(winnerId, sourceEventId, ReputationReason.BOUNTY_AWARDED, points, "answer", answerId);
-        events.publish(new BountyAwardedEvent(EventIds.next(), now, bounty.id(), questionId, sponsorId, winnerId, points));
+        events.publish(new BountyAwardedEvent(EventIds.next(), now, bounty.id(), questionId,
+                sponsorId, winnerId, points));
     }
 
     /** 到期未采纳的悬赏：关闭并退回冻结积分。由定时任务调用。 */

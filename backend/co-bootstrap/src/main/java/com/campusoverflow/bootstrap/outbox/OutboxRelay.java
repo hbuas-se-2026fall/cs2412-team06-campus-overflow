@@ -96,9 +96,10 @@ public class OutboxRelay {
             MapSqlParameterSource p = new MapSqlParameterSource("ids", ids)
                     .addValue("until", UtcTime.toDb(clock.instant().plus(LEASE))).addValue("owner", instanceId);
             named.update("UPDATE outbox_event SET locked_until = :until, locked_by = :owner WHERE id IN (:ids)", p);
-            return named.query("SELECT id, event_id, event_type, payload FROM outbox_event WHERE id IN (:ids) ORDER BY id",
-                    p, (rs, i) -> new Row(rs.getLong("id"), rs.getString("event_id"), rs.getString("event_type"),
-                            rs.getString("payload")));
+            String selectSql = "SELECT id, event_id, event_type, payload FROM outbox_event "
+                    + "WHERE id IN (:ids) ORDER BY id";
+            return named.query(selectSql, p, (rs, i) -> new Row(rs.getLong("id"), rs.getString("event_id"),
+                    rs.getString("event_type"), rs.getString("payload")));
         });
         return rows == null ? List.of() : rows;
     }
@@ -116,7 +117,8 @@ public class OutboxRelay {
             return true;
         } catch (Exception e) {
             failed.increment();
-            Integer attempts = jdbc.queryForObject("SELECT attempts FROM outbox_event WHERE id = ?", Integer.class, row.id());
+            String attemptsSql = "SELECT attempts FROM outbox_event WHERE id = ?";
+            Integer attempts = jdbc.queryForObject(attemptsSql, Integer.class, row.id());
             int next = (attempts == null ? 0 : attempts) + 1;
             Instant retryAt = clock.instant().plusSeconds(Math.min(1L << Math.min(next, 8), 300));
             String error = String.valueOf(e.getMessage());

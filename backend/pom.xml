@@ -35,6 +35,7 @@
         <commonmark.version>0.24.0</commonmark.version>
         <owasp-sanitizer.version>20240325.1</owasp-sanitizer.version>
         <jacoco.version>0.8.12</jacoco.version>
+        <checkstyle.version>10.18.2</checkstyle.version>
         <!-- 领域层行覆盖率门禁（适应度函数 FF-4）。Sprint 3 起启用 0.70（Lab7 要求 70%+，核心聚合 90%） -->
         <domain.coverage.minimum>0.70</domain.coverage.minimum>
     </properties>
@@ -187,9 +188,32 @@
                     <artifactId>jacoco-maven-plugin</artifactId>
                     <version>${jacoco.version}</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>${checkstyle.version}</version>
+                    <configuration>
+                        <configLocation>../config/checkstyle/checkstyle.xml</configLocation>
+                        <violationSeverity>error</violationSeverity>
+                        <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                        <failOnViolation>true</failOnViolation>
+                        <consoleOutput>true</consoleOutput>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>checkstyle-check</id>
+                        <phase>validate</phase>
+                        <goals><goal>check</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
