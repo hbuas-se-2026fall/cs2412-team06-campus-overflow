@@ -1,0 +1,7 @@
+request:
+  method: GET
+  urlPath: /api/v1/leaderboard
+  queryParameters:
+    period: hourly
+response:
+  status: 400
