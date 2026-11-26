@@ -124,11 +124,43 @@ jobs:
           echo "SonarQube 在超时内未就绪"
           exit 1
 
-      # 静态扫描；用插件全坐标（groupId:artifactId:version:goal），CI 干净环境无需在后端 pom 声明插件前缀解析；分析令牌走仓库 Secrets（SONAR_TOKEN）
+      # 临时实例无仓库 Secret：就绪后用默认 admin:admin 就地生成分析令牌，并建立质量门选中到本项目
+      # （新版首次登录会强制改密，但 token 生成接口在改密前仍可用）
+      - name: 生成令牌与质量门
+        run: |
+          set -e
+          # 1) 生成分析令牌，写入 GITHUB_ENV 供后续扫描步骤使用，并对日志脱敏
+          TOK=$(curl -sf -u admin:admin -X POST \
+            'http://localhost:9000/api/user_tokens/generate?name=ci-lab7' \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+          echo "::add-mask::$TOK"
+          echo "SONAR_TOKEN_LOCAL=$TOK" >> "$GITHUB_ENV"
+
+          # 2) 建立质量门 Lab7-Gate
+          GATE=$(curl -sf -u "$TOK": -X POST \
+            'http://localhost:9000/api/qualitygates/create' \
+            --data-urlencode 'name=Lab7-Gate' \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')
+
+          # 3) 门禁条件：Coverage < 70% 报错、Bugs > 0 报错、Vulnerabilities > 0 报错
+          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
+            -d "gateId=$GATE" -d 'metric=coverage' -d 'op=LT' -d 'error=70'
+          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
+            -d "gateId=$GATE" -d 'metric=bugs' -d 'op=GT' -d 'error=0'
+          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
+            -d "gateId=$GATE" -d 'metric=vulnerabilities' -d 'op=GT' -d 'error=0'
+
+          # 4) 把质量门选中到本项目
+          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/select' \
+            -d 'projectKey=campus-overflow' -d "gateId=$GATE"
+
+      # 静态扫描：插件全坐标（CI 干净环境无需后端 pom 声明前缀解析）；令牌取本 job 就地生成的 SONAR_TOKEN_LOCAL；
+      # 扫描后轮询等待质量门结论再退出，门禁不达标即红
       - name: SonarQube 扫描
-        run: mvn -B -f backend/pom.xml org.sonarsource.scanner.maven:sonar-maven-plugin:5.9.0.7382:sonar -Dsonar.host.url=http://localhost:9000
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: mvn -B -f backend/pom.xml org.sonarsource.scanner.maven:sonar-maven-plugin:5.9.0.7382:sonar \
+          -Dsonar.host.url=http://localhost:9000 \
+          -Dsonar.token=${{ env.SONAR_TOKEN_LOCAL }} \
+          -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=600
 
   images:
     name: 容器镜像构建
