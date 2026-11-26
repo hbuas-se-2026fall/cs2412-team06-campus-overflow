@@ -30,7 +30,8 @@ public class Notification {
 
     public static Notification create(long recipientId, NotificationType type, String title, String link,
                                       String sourceEventId, Instant now) {
-        return new Notification(null, recipientId, type, title, link, sourceEventId, false, Objects.requireNonNull(now));
+        return new Notification(null, recipientId, type, title, link, sourceEventId, false,
+                Objects.requireNonNull(now));
     }
 
     public static Notification reconstitute(Long id, long recipientId, NotificationType type, String title,

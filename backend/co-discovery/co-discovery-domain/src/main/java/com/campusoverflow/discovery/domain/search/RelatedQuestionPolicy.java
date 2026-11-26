@@ -17,11 +17,12 @@ public final class RelatedQuestionPolicy {
         return union <= 0 ? 0.0 : (double) shared / union;
     }
 
-    public static List<SearchIndex.RelatedCandidate> rank(List<SearchIndex.RelatedCandidate> candidates, int ownTagCount,
-                                                          int limit) {
+    public static List<SearchIndex.RelatedCandidate> rank(
+            List<SearchIndex.RelatedCandidate> candidates, int ownTagCount, int limit) {
         return candidates.stream()
                 .sorted(Comparator
-                        .comparingDouble((SearchIndex.RelatedCandidate c) -> jaccard(c.sharedTags(), c.tagCount(), ownTagCount))
+                        .comparingDouble((SearchIndex.RelatedCandidate c) ->
+                                jaccard(c.sharedTags(), c.tagCount(), ownTagCount))
                         .reversed()
                         .thenComparing(Comparator.comparingInt(SearchIndex.RelatedCandidate::score).reversed())
                         .thenComparing(Comparator.comparing(SearchIndex.RelatedCandidate::accepted).reversed()))
