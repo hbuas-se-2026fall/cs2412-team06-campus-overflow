@@ -41,17 +41,15 @@
         <!--
           关键公共类/方法 Javadoc（warning，不阻断）。
           存量领域 record / 接口 / 枚举不强卡；新增关键公共类型应补注释。
+          说明：Javadoc 相关属性在不同 Checkstyle 版本间改名较多，这里只保留
+          通用的 severity；细粒度开关交给后续按需补充，避免非法属性导致配置初始化失败。
         -->
         <module name="JavadocType">
             <property name="severity" value="warning"/>
             <property name="scope" value="public"/>
-            <property name="allowMissingJavadoc" value="false"/>
         </module>
         <module name="JavadocMethod">
             <property name="severity" value="warning"/>
-            <property name="scope" value="public"/>
-            <property name="allowMissingPropertyJavadoc" value="true"/>
-            <property name="allowMissingThrowsDoc" value="true"/>
         </module>
     </module>
 </module>
