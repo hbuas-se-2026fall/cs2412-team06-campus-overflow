@@ -60,7 +60,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <excludes>
-                        <exclude>com/campusoverflow/reputation/contract/**</exclude>
+                        <exclude>com/campusoverflow/reputation/contract/*.java</exclude>
+                        <exclude>com/campusoverflow/reputation/contract/**/*.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>
@@ -69,7 +70,9 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
                     <includes>
-                        <include>com/campusoverflow/reputation/contract/**</include>
+                        <!-- 必须写成「类名模式」（带 *.java），只写目录通配在 Linux runner 上选不中用例 -->
+                        <include>com/campusoverflow/reputation/contract/*.java</include>
+                        <include>com/campusoverflow/reputation/contract/**/*.java</include>
                     </includes>
                     <reportsDirectory>${project.build.directory}/contract-tests</reportsDirectory>
                 </configuration>
