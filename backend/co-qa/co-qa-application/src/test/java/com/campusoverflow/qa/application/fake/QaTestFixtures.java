@@ -3,12 +3,22 @@ package com.campusoverflow.qa.application.fake;
 import com.campusoverflow.identity.api.CourseSummary;
 import com.campusoverflow.identity.api.IdentityApi;
 import com.campusoverflow.identity.api.UserSummary;
+import com.campusoverflow.qa.application.port.ContentRenderer;
+import com.campusoverflow.qa.application.port.QaReadModel;
 import com.campusoverflow.qa.application.port.QuestionListCache;
+import com.campusoverflow.qa.application.port.ViewCounter;
+import com.campusoverflow.qa.application.query.AnswerRow;
+import com.campusoverflow.qa.application.query.CommentRow;
+import com.campusoverflow.qa.application.query.QuestionRow;
 import com.campusoverflow.qa.application.query.QuestionSummaryView;
+import com.campusoverflow.qa.application.query.TagView;
 import com.campusoverflow.qa.domain.Answer;
 import com.campusoverflow.qa.domain.AnswerRepository;
+import com.campusoverflow.qa.domain.Comment;
+import com.campusoverflow.qa.domain.CommentRepository;
 import com.campusoverflow.qa.domain.Question;
 import com.campusoverflow.qa.domain.QuestionRepository;
+import com.campusoverflow.qa.domain.TagRepository;
 import com.campusoverflow.qa.domain.TargetType;
 import com.campusoverflow.qa.domain.Vote;
 import com.campusoverflow.qa.domain.VoteRepository;
@@ -201,6 +211,97 @@ public final class QaTestFixtures {
         @Override
         public void record(String action, Long actorId, String targetType, String targetId, String detail) {
             actions.add(action);
+        }
+    }
+
+    public static class InMemoryTags implements TagRepository {
+        public final Map<String, Integer> usage = new LinkedHashMap<>();
+
+        @Override
+        public void adjustUsage(Collection<String> tagNames, int delta) {
+            tagNames.forEach(name -> usage.merge(name, delta, Integer::sum));
+        }
+    }
+
+    public static class InMemoryComments implements CommentRepository {
+        private final Map<Long, Comment> store = new LinkedHashMap<>();
+        private final AtomicLong sequence = new AtomicLong();
+
+        @Override
+        public Optional<Comment> findById(long id) {
+            return Optional.ofNullable(store.get(id));
+        }
+
+        @Override
+        public Comment save(Comment comment) {
+            if (comment.id() == null) {
+                comment.assignId(sequence.incrementAndGet());
+            }
+            store.put(comment.id(), comment);
+            return comment;
+        }
+    }
+
+    public static class StubRenderer implements ContentRenderer {
+        @Override
+        public String toSafeHtml(String markdown) {
+            return markdown;
+        }
+
+        @Override
+        public String toPlainText(String markdown, int maxLength) {
+            if (markdown == null) {
+                return "";
+            }
+            return markdown.length() <= maxLength ? markdown : markdown.substring(0, maxLength);
+        }
+    }
+
+    public static class StubViewCounter implements ViewCounter {
+        public final List<Long> increments = new ArrayList<>();
+
+        @Override
+        public void increment(long questionId) {
+            increments.add(questionId);
+        }
+    }
+
+    /** 读模型内存替身：查询行直接由测试预置，绕过数据库装配。 */
+    public static class InMemoryReadModel implements QaReadModel {
+        public final List<QuestionRow> questions = new ArrayList<>();
+        public final List<AnswerRow> answers = new ArrayList<>();
+        public final List<CommentRow> comments = new ArrayList<>();
+        public final Map<String, Integer> myVotes = new HashMap<>();
+        public final List<TagView> tags = new ArrayList<>();
+
+        @Override
+        public PageResult<QuestionRow> listQuestions(Long courseId, PageRequest page) {
+            return new PageResult<>(questions, questions.size(), page.page(), page.size());
+        }
+
+        @Override
+        public Optional<QuestionRow> findQuestion(long questionId) {
+            return questions.stream().filter(q -> q.id() == questionId).findFirst();
+        }
+
+        @Override
+        public List<AnswerRow> findAnswers(long questionId) {
+            return answers;
+        }
+
+        @Override
+        public List<CommentRow> findComments(long questionId) {
+            return comments;
+        }
+
+        @Override
+        public Map<String, Integer> findMyVotes(long voterId, long questionId, Collection<Long> answerIds) {
+            return myVotes;
+        }
+
+        @Override
+        public List<TagView> popularTags(int limit) {
+            return tags;
         }
     }
 }

@@ -33,5 +33,69 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-contract-verifier</artifactId>
+            <version>4.2.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-contract-maven-plugin</artifactId>
+                <version>4.2.3</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <baseClassForTests>com.campusoverflow.reputation.contract.LeaderboardContractBase</baseClassForTests>
+                    <contractsDirectory>${project.basedir}/src/test/resources/contracts</contractsDirectory>
+                </configuration>
+            </plugin>
+            <!-- 契约生成测试统一由 failsafe 在 integration-test 阶段执行（issue #40 验收：failsafe 阶段跑通）；
+                 surefire 排除同一包，避免单测阶段重复执行。仅配置本子模块，不改根 pom / ci.yml。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>com/campusoverflow/reputation/contract/*.java</exclude>
+                        <exclude>com/campusoverflow/reputation/contract/**/*.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <!-- spring-cloud-contract 4.2.3 的 generateTests 在 CI 上不把生成目录登记为测试源码根，
+                 导致 target/test-classes 里没有 LeaderboardTest.class（日志里只编译 2 个源文件），
+                 failsafe 自然选不中。显式把生成目录加进 testCompileSourceRoots。 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>add-contract-test-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals><goal>add-test-source</goal></goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-test-sources/contracts</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <!-- 按包路径选中生成的契约测试（LeaderboardTest 由 SCC 生成在 contract 包下） -->
+                        <include>**/contract/**/*.java</include>
+                    </includes>
+                    <reportsDirectory>${project.build.directory}/contract-tests</reportsDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
