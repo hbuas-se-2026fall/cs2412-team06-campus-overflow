@@ -3,6 +3,8 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /src
 COPY backend/pom.xml ./pom.xml
 COPY backend/ ./
+# checkstyle 规则集位于仓库根 config/，pom 以 ../config 相对 backend 引用，需一并带入镜像（#48）
+COPY config/ /config/
 RUN mvn -B -DskipTests clean package
 
 FROM eclipse-temurin:21-jre-alpine
