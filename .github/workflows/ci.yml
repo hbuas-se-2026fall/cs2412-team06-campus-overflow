@@ -156,17 +156,11 @@ jobs:
 
       # 静态扫描：插件全坐标（CI 干净环境无需后端 pom 声明前缀解析）；令牌取本 job 就地生成的 SONAR_TOKEN_LOCAL；
       # Maven 插件不读取 sonar-project.properties，项目标识/覆盖率路径在命令行显式传入；
-      # 所有 -D 选项放在插件 goal 之前（goal 之后的 -D 会被 Maven 误解析为插件前缀）；
+      # 命令写成单行，避免多行反斜杠续行在 bash 下把 -D 误拼进插件坐标；
       # 扫描后轮询等待质量门结论再退出，门禁不达标即红
       - name: SonarQube 扫描
-        run: mvn -B -f backend/pom.xml \
-          -Dsonar.host.url=http://localhost:9000 \
-          -Dsonar.token=${{ env.SONAR_TOKEN_LOCAL }} \
-          -Dsonar.projectKey=campus-overflow \
-          -Dsonar.projectName=CampusOverflow \
-          "-Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml" \
-          -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=600 \
-          org.sonarsource.scanner.maven:sonar-maven-plugin:5.9.0.7382:sonar
+        working-directory: backend
+        run: mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.9.0.7382:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=${{ env.SONAR_TOKEN_LOCAL }} -Dsonar.projectKey=campus-overflow -Dsonar.projectName=CampusOverflow "-Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml" -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=600
 
   images:
     name: 容器镜像构建
