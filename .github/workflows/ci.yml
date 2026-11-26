@@ -149,9 +149,10 @@ jobs:
           curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
             -d 'gateName=Lab7-Gate' -d 'metric=vulnerabilities' -d 'op=GT' -d 'error=0'
 
-          # 4) 把质量门选中到本项目（参数用 gateName）
-          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/select' \
-            -d 'projectKey=campus-overflow' -d 'gateName=Lab7-Gate'
+          # 4) 把 Lab7-Gate 设为默认质量门：新项目首次分析即自动套用。
+          #    （select 要求项目已存在，全新实例在扫描前项目尚未创建，会 404，故用默认门）
+          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/set_as_default' \
+            --data-urlencode 'name=Lab7-Gate'
 
       # 静态扫描：插件全坐标（CI 干净环境无需后端 pom 声明前缀解析）；令牌取本 job 就地生成的 SONAR_TOKEN_LOCAL；
       # Maven 插件不读取 sonar-project.properties，项目标识/覆盖率路径/字节码目录在命令行显式传入；
