@@ -124,9 +124,9 @@ jobs:
           echo "SonarQube 在超时内未就绪"
           exit 1
 
-      # 静态扫描；分析令牌走仓库 Secrets（SONAR_TOKEN），临时实例无令牌时由服务端配置决定
+      # 静态扫描；用插件全坐标（groupId:artifactId:version:goal），CI 干净环境无需在后端 pom 声明插件前缀解析；分析令牌走仓库 Secrets（SONAR_TOKEN）
       - name: SonarQube 扫描
-        run: mvn -B -f backend/pom.xml sonar:sonar -Dsonar.host.url=http://localhost:9000
+        run: mvn -B -f backend/pom.xml org.sonarsource.scanner.maven:sonar-maven-plugin:5.9.0.7382:sonar -Dsonar.host.url=http://localhost:9000
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
