@@ -15,7 +15,9 @@
     <springProfile name="!prod">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>${CONSOLE_PATTERN}</pattern>
+                <!-- 属性名必须是 Spring Boot defaults.xml 提供的 CONSOLE_LOG_PATTERN；
+                     写成 CONSOLE_PATTERN 会渲染成 CONSOLE_PATTERN_IS_UNDEFINED -->
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
                 <charset>UTF-8</charset>
             </encoder>
         </appender>
