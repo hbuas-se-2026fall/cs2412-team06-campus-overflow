@@ -1,7 +1,6 @@
 package com.campusoverflow.reputation.application;
 
 import com.campusoverflow.identity.api.IdentityApi;
-import com.campusoverflow.identity.api.UserSummary;
 import com.campusoverflow.qa.api.QaQueryApi;
 import com.campusoverflow.reputation.api.event.BountyAwardedEvent;
 import com.campusoverflow.reputation.api.event.BountyClosedEvent;
