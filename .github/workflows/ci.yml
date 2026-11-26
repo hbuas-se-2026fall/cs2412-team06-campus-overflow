@@ -64,7 +64,7 @@ jobs:
             **/target/contract-tests/*.xml
 
   frontend:
-    name: 前端构建
+    name: 前端检查与构建
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,12 +74,95 @@ jobs:
       - name: 安装依赖
         working-directory: frontend
         run: npm install --no-audit --no-fund
+      # 前端 ESLint 门禁：从本地手动跑升级为 CI 强制检查，违规即红（Lab7-T4）
+      - name: 代码检查 (ESLint)
+        working-directory: frontend
+        run: npm run lint
       - name: 类型检查
         working-directory: frontend
         run: npm run typecheck
       - name: 构建
         working-directory: frontend
         run: npm run build
+
+  # 阶段 6：SonarQube 静态扫描（Lab7-T4，从）
+  # ubuntu-latest 自带 Docker，用 service container 临时起 SonarQube Community；
+  # 质量门禁：覆盖率 > 70%、Bugs = 0、Vulnerabilities = 0（Quality Gate 规则在 SonarQube 侧配置）。
+  sonar:
+    name: SonarQube 静态扫描
+    runs-on: ubuntu-latest
+    needs: backend
+    services:
+      sonarqube:
+        image: sonarqube:community
+        ports:
+          - 9000:9000
+        options: >-
+          -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 配置 JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+          cache: maven
+
+      # 生成 JaCoCo 覆盖率报告（供 Sonar 导入）
+      - name: 生成覆盖率报告
+        run: mvn -B -f backend/pom.xml verify -DskipITs -Djacoco.skip=false -pl co-identity/co-identity-domain,co-identity/co-identity-application,co-qa/co-qa-domain,co-qa/co-qa-application,co-reputation/co-reputation-domain,co-reputation/co-reputation-application,co-discovery/co-discovery-domain,co-discovery/co-discovery-application -am
+
+      # 等待临时 SonarQube 实例就绪（首次启动初始化 ES，允许较慢）
+      - name: 等待 SonarQube 就绪
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:9000/api/system/status | grep -q '"status":"UP"'; then
+              echo "SonarQube UP"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "SonarQube 在超时内未就绪"
+          exit 1
+
+      # 临时实例无仓库 Secret：就绪后用默认 admin:admin 就地生成分析令牌，并建立质量门选中到本项目
+      # （新版首次登录会强制改密，但 token 生成接口在改密前仍可用）
+      - name: 生成令牌与质量门
+        run: |
+          set -e
+          # 1) 生成分析令牌，写入 GITHUB_ENV 供后续扫描步骤使用，并对日志脱敏
+          TOK=$(curl -sf -u admin:admin -X POST \
+            'http://localhost:9000/api/user_tokens/generate?name=ci-lab7' \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+          echo "::add-mask::$TOK"
+          echo "SONAR_TOKEN_LOCAL=$TOK" >> "$GITHUB_ENV"
+
+          # 2) 建立质量门 Lab7-Gate（26 版 create 仅返回 name，按门名关联，无数字 id；门已存在则忽略）
+          curl -sf -u "$TOK": -X POST \
+            'http://localhost:9000/api/qualitygates/create' \
+            --data-urlencode 'name=Lab7-Gate' || echo "Lab7-Gate 已存在，跳过创建"
+
+          # 3) 门禁条件：Coverage < 70% 报错、Bugs > 0 报错、Vulnerabilities > 0 报错（26 版参数用 gateName）
+          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
+            -d 'gateName=Lab7-Gate' -d 'metric=coverage' -d 'op=LT' -d 'error=70'
+          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
+            -d 'gateName=Lab7-Gate' -d 'metric=bugs' -d 'op=GT' -d 'error=0'
+          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
+            -d 'gateName=Lab7-Gate' -d 'metric=vulnerabilities' -d 'op=GT' -d 'error=0'
+
+          # 4) 把 Lab7-Gate 设为默认质量门：新项目首次分析即自动套用。
+          #    （select 要求项目已存在，全新实例在扫描前项目尚未创建，会 404，故用默认门）
+          curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/set_as_default' \
+            --data-urlencode 'name=Lab7-Gate'
+
+      # 静态扫描：插件全坐标（CI 干净环境无需后端 pom 声明前缀解析）；令牌取本 job 就地生成的 SONAR_TOKEN_LOCAL；
+      # Maven 插件不读取 sonar-project.properties，项目标识/覆盖率路径在命令行显式传入；
+      # 命令写成单行，避免多行反斜杠续行在 bash 下把 -D 误拼进插件坐标；
+      # 扫描后轮询等待质量门结论再退出，门禁不达标即红
+      - name: SonarQube 扫描
+        working-directory: backend
+        run: mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.9.0.7382:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=${{ env.SONAR_TOKEN_LOCAL }} -Dsonar.projectKey=campus-overflow -Dsonar.projectName=CampusOverflow "-Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml" -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=600
 
   images:
     name: 容器镜像构建
