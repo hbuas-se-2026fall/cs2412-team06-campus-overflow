@@ -136,30 +136,33 @@ jobs:
           echo "::add-mask::$TOK"
           echo "SONAR_TOKEN_LOCAL=$TOK" >> "$GITHUB_ENV"
 
-          # 2) 建立质量门 Lab7-Gate
-          GATE=$(curl -sf -u "$TOK": -X POST \
+          # 2) 建立质量门 Lab7-Gate（26 版 create 仅返回 name，按门名关联，无数字 id；门已存在则忽略）
+          curl -sf -u "$TOK": -X POST \
             'http://localhost:9000/api/qualitygates/create' \
-            --data-urlencode 'name=Lab7-Gate' \
-            | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')
+            --data-urlencode 'name=Lab7-Gate' || echo "Lab7-Gate 已存在，跳过创建"
 
-          # 3) 门禁条件：Coverage < 70% 报错、Bugs > 0 报错、Vulnerabilities > 0 报错
+          # 3) 门禁条件：Coverage < 70% 报错、Bugs > 0 报错、Vulnerabilities > 0 报错（26 版参数用 gateName）
           curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
-            -d "gateId=$GATE" -d 'metric=coverage' -d 'op=LT' -d 'error=70'
+            -d 'gateName=Lab7-Gate' -d 'metric=coverage' -d 'op=LT' -d 'error=70'
           curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
-            -d "gateId=$GATE" -d 'metric=bugs' -d 'op=GT' -d 'error=0'
+            -d 'gateName=Lab7-Gate' -d 'metric=bugs' -d 'op=GT' -d 'error=0'
           curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/create_condition' \
-            -d "gateId=$GATE" -d 'metric=vulnerabilities' -d 'op=GT' -d 'error=0'
+            -d 'gateName=Lab7-Gate' -d 'metric=vulnerabilities' -d 'op=GT' -d 'error=0'
 
-          # 4) 把质量门选中到本项目
+          # 4) 把质量门选中到本项目（参数用 gateName）
           curl -sf -u "$TOK": -X POST 'http://localhost:9000/api/qualitygates/select' \
-            -d 'projectKey=campus-overflow' -d "gateId=$GATE"
+            -d 'projectKey=campus-overflow' -d 'gateName=Lab7-Gate'
 
       # 静态扫描：插件全坐标（CI 干净环境无需后端 pom 声明前缀解析）；令牌取本 job 就地生成的 SONAR_TOKEN_LOCAL；
+      # Maven 插件不读取 sonar-project.properties，项目标识/覆盖率路径/字节码目录在命令行显式传入；
       # 扫描后轮询等待质量门结论再退出，门禁不达标即红
       - name: SonarQube 扫描
         run: mvn -B -f backend/pom.xml org.sonarsource.scanner.maven:sonar-maven-plugin:5.9.0.7382:sonar \
           -Dsonar.host.url=http://localhost:9000 \
           -Dsonar.token=${{ env.SONAR_TOKEN_LOCAL }} \
+          -Dsonar.projectKey=campus-overflow \
+          -Dsonar.projectName=CampusOverflow \
+          "-Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml" \
           -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=600
 
   images:
